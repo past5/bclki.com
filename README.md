@@ -67,6 +67,12 @@ Counts are computed at runtime from the embedded dataset.
 - [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) 1.5.3
 - Basemap tiles by [CARTO](https://carto.com/) and [Esri](https://www.esri.com/)
 
+## Privacy / analytics
+
+The hosted version uses [Google Analytics 4](https://developers.google.com/analytics) (Measurement ID `G-SDFRJC4NTH`) with [Consent Mode v2](https://developers.google.com/tag-platform/security/guides/consent) to measure page views and a small set of UI events (basemap switches, filter changes, popup opens, list selections, copy-link clicks, etc.).
+
+Analytics are **denied by default**. A consent banner appears on first visit; declining keeps analytics off and the choice is remembered in `localStorage` under `bclki_consent_v1`. No personal data is collected, IP addresses are anonymized (`anonymize_ip: true`), and no advertising signals are sent.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

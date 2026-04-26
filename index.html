@@ -7,6 +7,23 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+
+<!-- Google Analytics (gtag.js) with Consent Mode v2 default-deny -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'analytics_storage': 'denied',
+    'wait_for_update': 500
+  });
+  gtag('js', new Date());
+  gtag('config', 'G-SDFRJC4NTH', { 'anonymize_ip': true });
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SDFRJC4NTH"></script>
+
 <style>
 :root {
   --paper: #fdfaf2;
@@ -307,6 +324,36 @@ input[type="text"]:focus, select:focus { border-color: var(--oxblood); box-shado
   .click-hint { display: none; }
   #list-rows { max-height: calc(50vh - 200px); }
 }
+
+/* === Consent banner === */
+.consent-banner {
+  position: fixed; bottom: 12px; left: 12px; right: 12px;
+  max-width: 640px; margin: 0 auto;
+  background: var(--paper);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14'><path d='M0 14L14 0' stroke='%23785a28' stroke-opacity='0.05' stroke-width='1'/></svg>");
+  border: 1px solid var(--rule); border-radius: 3px;
+  box-shadow: 0 8px 28px rgba(58,47,28,0.25);
+  padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+  z-index: 3000; font-family: var(--sans);
+}
+.consent-text { flex: 1; font-size: 12px; line-height: 1.5; color: var(--ink-muted); }
+.consent-text strong { color: var(--ink); font-family: var(--serif); display: block; margin-bottom: 2px; font-size: 13px; font-weight: 700; }
+.consent-text a { color: var(--cobalt); text-decoration: none; }
+.consent-text a:hover { text-decoration: underline; }
+.consent-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.consent-btn {
+  border: 1px solid var(--rule); padding: 7px 14px; border-radius: 3px;
+  font-family: var(--sans); font-size: 11px; letter-spacing: 0.4px;
+  cursor: pointer; background: var(--paper); color: var(--ink);
+}
+.consent-btn:hover { background: #fef9e7; }
+.consent-btn.accept { background: var(--oxblood); color: #fef9e7; border-color: var(--oxblood); }
+.consent-btn.accept:hover { background: #5e1f0d; }
+@media (max-width: 700px) {
+  .consent-banner { flex-direction: column; align-items: stretch; padding: 12px; bottom: 8px; left: 8px; right: 8px; }
+  .consent-actions { justify-content: stretch; }
+  .consent-actions .consent-btn { flex: 1; }
+}
 </style>
 </head>
 <body>
@@ -433,6 +480,17 @@ input[type="text"]:focus, select:focus { border-color: var(--oxblood); box-shado
   </div>
 </div>
 
+<div class="consent-banner" id="consent-banner" hidden>
+  <div class="consent-text">
+    <strong>Cookies for analytics</strong>
+    This site uses Google Analytics to understand how the BC LKI Explorer is used. No personal data is collected. You can decline and the explorer works the same.
+  </div>
+  <div class="consent-actions">
+    <button class="consent-btn decline" id="consent-decline">Decline</button>
+    <button class="consent-btn accept" id="consent-accept">Accept analytics</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script>
@@ -514,6 +572,7 @@ function setStyle(key) {
   currentTile = TILES[key].addTo(map);
   document.querySelectorAll('.map-style button').forEach(b => b.classList.toggle('active', b.dataset.style === key));
   writeHash();
+  track('basemap_change', { basemap: key });
 }
 document.querySelectorAll('.map-style button').forEach(btn => btn.addEventListener('click', () => setStyle(btn.dataset.style)));
 
@@ -577,6 +636,7 @@ catsEl.addEventListener('change', e => {
   const cat = e.target.dataset.cat;
   if (!cat) return;
   if (e.target.checked) activeCats.add(cat); else activeCats.delete(cat);
+  track('category_toggle', { category: cat, on: e.target.checked });
   scheduleRender();
 });
 
@@ -586,7 +646,7 @@ Object.entries(DATA.regions).forEach(([k, v]) => {
   const opt = document.createElement('option');
   opt.value = k; opt.textContent = v; regionSel.appendChild(opt);
 });
-regionSel.addEventListener('change', e => { activeRegion = parseInt(e.target.value); scheduleRender(); });
+regionSel.addEventListener('change', e => { activeRegion = parseInt(e.target.value); track('region_filter', { region_id: activeRegion }); scheduleRender(); });
 
 const hwysWithData = new Set();
 for (const r of DATA.landmarks) if (r[3]) hwysWithData.add(r[3]);
@@ -598,7 +658,7 @@ Array.from(hwysWithData).sort((a, b) => a - b).forEach(h => {
   opt.textContent = `Hwy ${h}${desc}`;
   hwySel.appendChild(opt);
 });
-hwySel.addEventListener('change', e => { activeHwy = parseInt(e.target.value); scheduleRender(); });
+hwySel.addEventListener('change', e => { activeHwy = parseInt(e.target.value); track('highway_filter', { highway: activeHwy }); scheduleRender(); });
 
 let searchTimer;
 const searchEl = document.getElementById('search');
@@ -606,19 +666,20 @@ searchEl.addEventListener('input', e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     searchTerm = e.target.value.trim().toUpperCase();
+    if (searchTerm) track('search', { search_term: searchTerm });
     scheduleRender();
   }, 180);
 });
 
-document.getElementById('all-on').onclick   = () => { activeCats = new Set(Object.keys(DATA.categories)); syncChecks(); scheduleRender(); };
-document.getElementById('all-off').onclick  = () => { activeCats = new Set(); syncChecks(); scheduleRender(); };
-document.getElementById('defaults').onclick = () => { activeCats = new Set(DATA.defaults_on); syncChecks(); scheduleRender(); };
+document.getElementById('all-on').onclick   = () => { activeCats = new Set(Object.keys(DATA.categories)); syncChecks(); track('category_preset', { preset: 'all_on' }); scheduleRender(); };
+document.getElementById('all-off').onclick  = () => { activeCats = new Set(); syncChecks(); track('category_preset', { preset: 'all_off' }); scheduleRender(); };
+document.getElementById('defaults').onclick = () => { activeCats = new Set(DATA.defaults_on); syncChecks(); track('category_preset', { preset: 'defaults' }); scheduleRender(); };
 document.getElementById('reset-all').onclick = () => {
   activeCats = new Set(DATA.defaults_on);
   activeRegion = 0; regionSel.value = '0';
   activeHwy = 0; hwySel.value = '0';
   searchTerm = ''; searchEl.value = '';
-  syncChecks(); scheduleRender();
+  syncChecks(); track('reset_filters'); scheduleRender();
 };
 function syncChecks() {
   document.querySelectorAll('[data-cat]').forEach(el => { el.checked = activeCats.has(el.dataset.cat); });
@@ -635,12 +696,13 @@ function setMode(m) {
   document.getElementById('list-pane').classList.toggle('active', m === 'list');
   if (m === 'list') renderList();
   writeHash();
+  track('mode_change', { mode: m });
 }
 document.getElementById('list-sort').addEventListener('change', e => { listSort = e.target.value; renderList(); });
 
 // === ABOUT MODAL ===
 const aboutModal = document.getElementById('about-modal');
-function openAbout()  { aboutModal.classList.add('open'); aboutModal.setAttribute('aria-hidden', 'false'); }
+function openAbout()  { aboutModal.classList.add('open'); aboutModal.setAttribute('aria-hidden', 'false'); track('about_open'); }
 function closeAbout() { aboutModal.classList.remove('open'); aboutModal.setAttribute('aria-hidden', 'true'); }
 document.getElementById('open-about').addEventListener('click', openAbout);
 document.getElementById('close-about').addEventListener('click', closeAbout);
@@ -729,6 +791,7 @@ map.on('popupopen', e => {
         ? `${btn.dataset.lat}, ${btn.dataset.lon}`
         : window.location.href;
       copyToClipboard(text);
+      track('copy', { kind: btn.dataset.copy });
       const orig = btn.textContent;
       btn.textContent = 'copied';
       setTimeout(() => { btn.textContent = orig; }, 900);
@@ -755,6 +818,7 @@ function render() {
     if (searchTerm && !r[6].toUpperCase().includes(searchTerm)) continue;
     const m = L.marker([r[0], r[1]], { icon: iconForCat(cat) });
     m.bindPopup(buildPopupHtml(r));
+    m.on('popupopen', () => track('landmark_popup', { type_code: r[2], category: cat }));
     markers.push(m);
     visibleLandmarks.push({ idx: i, r, marker: m });
   }
@@ -811,6 +875,7 @@ listRowsEl.addEventListener('click', e => {
   const idx = parseInt(row.dataset.idx);
   const it = visibleLandmarks.find(x => x.idx === idx);
   if (!it) return;
+  track('list_select', { type_code: it.r[2] });
   map.flyTo([it.r[0], it.r[1]], Math.max(map.getZoom(), 13), { duration: 0.6 });
   setTimeout(() => it.marker.openPopup(), 700);
 });
@@ -831,6 +896,7 @@ map.on('click', e => {
     if (d < bestDist) { bestDist = d; best = r; }
   }
   if (!best) return;
+  track('nearest_search', { distance_m: Math.round(bestDist * 1000) });
   const distLbl = bestDist < 1 ? `${Math.round(bestDist * 1000)} m` : `${bestDist.toFixed(2)} km`;
   const hwy = best[3] ? `Hwy ${best[3]}` : '';
   const kmS = (best[4] != null && !isNaN(best[4])) ? `KM ${Number(best[4]).toFixed(1)}` : '';
@@ -894,6 +960,7 @@ overlayBtn.addEventListener('click', () => {
   if (regionOverlayOn) { drawRegionOverlay(); map.addLayer(overlayLayer); }
   else { map.removeLayer(overlayLayer); }
   writeHash();
+  track('region_overlay', { on: regionOverlayOn });
 });
 
 // === URL HASH STATE ===
@@ -939,7 +1006,44 @@ function readHash() {
 map.on('moveend', () => writeHash());
 map.on('zoomend', () => writeHash());
 
+// === ANALYTICS + CONSENT ===
+const CONSENT_KEY = 'bclki_consent_v1';
+let analyticsAllowed = false;
+function track(event, params) {
+  if (!analyticsAllowed) return;
+  if (typeof window.gtag === 'function') window.gtag('event', event, params || {});
+}
+function applyConsent(granted) {
+  analyticsAllowed = granted;
+  if (typeof window.gtag === 'function') {
+    window.gtag('consent', 'update', { 'analytics_storage': granted ? 'granted' : 'denied' });
+  }
+}
+function initConsent() {
+  let saved = null;
+  try { saved = localStorage.getItem(CONSENT_KEY); } catch {}
+  if (saved === 'granted' || saved === 'denied') {
+    applyConsent(saved === 'granted');
+    return;
+  }
+  const banner = document.getElementById('consent-banner');
+  if (!banner) return;
+  banner.hidden = false;
+  document.getElementById('consent-accept').addEventListener('click', () => {
+    try { localStorage.setItem(CONSENT_KEY, 'granted'); } catch {}
+    applyConsent(true);
+    banner.hidden = true;
+    track('consent', { decision: 'granted' });
+  });
+  document.getElementById('consent-decline').addEventListener('click', () => {
+    try { localStorage.setItem(CONSENT_KEY, 'denied'); } catch {}
+    applyConsent(false);
+    banner.hidden = true;
+  });
+}
+
 // === BOOT ===
+initConsent();
 readHash();
 suppressHash = false;
 setTimeout(render, 20);
